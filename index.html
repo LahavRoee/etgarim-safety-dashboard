@@ -1873,10 +1873,13 @@ function render() {
   renderInsights(rows);
 }
 
-document.getElementById('anonToggle').addEventListener('change', e => {
-  state.anonymous = e.target.checked;
-  render();
-});
+const anonEl = document.getElementById('anonToggle');
+if (anonEl) {
+  anonEl.addEventListener('change', e => {
+    state.anonymous = e.target.checked;
+    render();
+  });
+}
 
 function resetFilters() {
   state.filters = { activity: [], funder: [], severity: [], year: [], root: [], closed: [] };
