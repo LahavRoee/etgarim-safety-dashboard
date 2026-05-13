@@ -5,6 +5,7 @@
 <title>דשבורד בטיחות עמותת אתגרים</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 :root {
   --orange: #F57C20;
@@ -545,6 +546,432 @@ body {
   margin-top: -2px;
 }
 
+/* ===== Risk Management ===== */
+.risk-intro {
+  background: linear-gradient(135deg, #FFF8F0 0%, #FFEFE0 100%);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-right: 4px solid var(--orange);
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+.risk-intro strong { color: var(--orange-dark); }
+
+/* 5x5 Heat Map */
+.heatmap-wrap {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+.heatmap-y-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text-soft);
+  letter-spacing: 1px;
+}
+.heatmap {
+  display: grid;
+  grid-template-columns: 30px repeat(5, 1fr);
+  grid-template-rows: repeat(5, 60px) 30px;
+  gap: 4px;
+}
+.heatmap-cell {
+  border-radius: 8px;
+  padding: 4px;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.6);
+  transition: transform 0.15s;
+}
+.heatmap-cell:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.hm-r1 { background: #82E0AA; } /* very low */
+.hm-r2 { background: #ABEBC6; }
+.hm-r3 { background: #F9E79F; }
+.hm-r4 { background: #F5B041; }
+.hm-r5 { background: #E74C3C; color: white; }
+.hm-axis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+.risk-dot {
+  background: rgba(0,0,0,0.85);
+  color: white;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.risk-dot:hover { background: var(--orange); transform: scale(1.2); }
+.risk-dot.residual { background: var(--orange-dark); border-color: #FFE8D1; }
+
+/* Risk legend */
+.risk-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: var(--orange-bg);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.risk-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.risk-legend-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+/* Risk Score Badge */
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: white;
+}
+.score-low { background: #27AE60; }
+.score-mod { background: #F1C40F; color: #333; }
+.score-high { background: #E67E22; }
+.score-ext { background: #E74C3C; }
+
+/* Alert light */
+.alert-light {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.alert-light .light {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+}
+.alert-light.alert .light {
+  background: #E74C3C;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1), 0 0 8px rgba(231, 76, 60, 0.7);
+  animation: pulse 1.5s infinite;
+}
+.alert-light.ok .light { background: #27AE60; }
+.alert-light.warn .light { background: #F39C12; }
+.alert-light.alert { color: #C0392B; }
+.alert-light.ok { color: #1E7E34; }
+.alert-light.warn { color: #B7791F; }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Risk register table */
+.risk-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+.risk-table thead th {
+  background: var(--orange-bg);
+  color: var(--orange-dark);
+  font-weight: 700;
+  padding: 10px 8px;
+  text-align: right;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid var(--orange-accent);
+  vertical-align: middle;
+}
+.risk-table tbody td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  text-align: right;
+}
+.risk-table tbody tr:hover { background: var(--orange-bg); }
+.risk-table .mitigations-list {
+  margin: 0;
+  padding-right: 16px;
+  font-size: 11.5px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+.risk-table .mitigations-list li {
+  margin-bottom: 3px;
+}
+.risk-table .center { text-align: center; }
+.risk-table .risk-id {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  color: var(--orange-dark);
+  font-size: 12px;
+}
+.risk-table .reduction-pct {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 11px;
+}
+.reduction-good { background: #D4EFDF; color: #1E7E34; }
+.reduction-mod { background: #FCF3CF; color: #B7791F; }
+.reduction-bad { background: #FADBD8; color: #C0392B; }
+
+/* Edit risk button */
+.btn-icon {
+  background: white;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.btn-icon:hover {
+  border-color: var(--orange);
+  background: var(--orange-bg);
+}
+.btn-icon.danger:hover {
+  border-color: #E74C3C;
+  background: #FADBD8;
+  color: #C0392B;
+}
+
+.add-risk-cta {
+  background: var(--orange-bg);
+  border: 2px dashed var(--orange-accent);
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+  margin-top: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 600;
+  color: var(--orange-dark);
+  font-size: 14px;
+}
+.add-risk-cta:hover {
+  background: var(--orange-light);
+  border-color: var(--orange);
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(42, 42, 42, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  width: 90%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal h3 {
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.modal h3::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 22px;
+  background: var(--orange);
+  border-radius: 2px;
+}
+.modal-field {
+  margin-bottom: 14px;
+}
+.modal-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-bottom: 5px;
+}
+.modal-field input, .modal-field textarea, .modal-field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+}
+.modal-field input:focus, .modal-field textarea:focus, .modal-field select:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(245, 124, 32, 0.15);
+}
+.modal-field textarea { resize: vertical; min-height: 80px; }
+.modal-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.modal-actions button {
+  flex: 1;
+  padding: 11px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  transition: all 0.15s;
+}
+.btn-primary {
+  background: var(--orange);
+  color: white;
+}
+.btn-primary:hover { background: var(--orange-dark); }
+.btn-secondary {
+  background: var(--orange-bg);
+  color: var(--orange-dark);
+  border: 1.5px solid var(--orange-accent) !important;
+}
+.btn-secondary:hover { background: var(--orange-light); }
+
+/* Export toolbar */
+.export-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.export-btn {
+  background: white;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.export-btn:hover {
+  border-color: var(--orange);
+  background: var(--orange-bg);
+  color: var(--orange-dark);
+}
+.export-btn.primary {
+  background: #25D366;
+  color: white;
+  border-color: #25D366;
+}
+.export-btn.primary:hover {
+  background: #1DA851;
+  border-color: #1DA851;
+}
+.export-btn.fab {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  background: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.export-btn.fab:hover {
+  transform: scale(1.1);
+  background: var(--orange-dark);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #2A2A2A;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+.toast.show { display: flex; animation: slideUp 0.3s; }
+.toast.success { background: #27AE60; }
+.toast.error { background: #E74C3C; }
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* ===== Footer ===== */
 .footer {
   text-align: center;
@@ -777,6 +1204,182 @@ body {
       <tbody></tbody>
     </table>
   </section>
+
+  <!-- ===== Risk Management (ISO 31000) ===== -->
+  <section class="section" id="riskSection">
+    <div class="section-header">
+      <h2>🛡 ניהול סיכונים — ISO 31000</h2>
+      <span class="badge">מטריצת סיכונים</span>
+    </div>
+
+    <div class="risk-intro">
+      <strong>מתודולוגיה:</strong> כל סיכון מקבל ציון לפי <strong>סבירות × חומרה</strong> (1-25). הציון <strong>הראשוני</strong> משקף את הסיכון לפני מיטיגציות. הציון <strong>השארי</strong> משקף את הסיכון אחרי יישום בקרות. נורת אזהרה אדומה נדלקת כאשר הפחתת הסיכון נמוכה מ-30% — סימן שצריך מיטיגציות נוספות.
+    </div>
+
+    <!-- Risk Legend -->
+    <div class="risk-legend">
+      <div class="risk-legend-item"><span class="risk-legend-swatch" style="background:#82E0AA"></span>נמוך (1-4)</div>
+      <div class="risk-legend-item"><span class="risk-legend-swatch" style="background:#F9E79F"></span>בינוני (5-9)</div>
+      <div class="risk-legend-item"><span class="risk-legend-swatch" style="background:#F5B041"></span>גבוה (10-15)</div>
+      <div class="risk-legend-item"><span class="risk-legend-swatch" style="background:#E74C3C"></span>קיצוני (16-25)</div>
+      <div style="margin-right:auto; font-size:12px; color:var(--text-muted)">
+        <span class="risk-dot" style="display:inline-flex; width:16px; height:16px; font-size:8px; margin-left:4px">#</span> ראשוני
+        <span class="risk-dot residual" style="display:inline-flex; width:16px; height:16px; font-size:8px; margin-right:8px; margin-left:4px">#</span> שארי (לאחר מיטיגציה)
+      </div>
+    </div>
+
+    <!-- 5x5 Heat Map -->
+    <h3 style="font-size: 15px; margin-bottom: 12px; color: var(--text);">מטריצת חום 5×5</h3>
+    <div class="heatmap-wrap">
+      <div class="heatmap-y-label">סבירות ◀</div>
+      <div class="heatmap" id="heatmap"></div>
+    </div>
+
+    <!-- Risk register table -->
+    <h3 style="font-size: 15px; margin-bottom: 12px; color: var(--text); margin-top: 24px;">פנקס סיכונים מפורט</h3>
+    <div style="overflow-x: auto;">
+      <table class="risk-table" id="riskTable">
+        <thead>
+          <tr>
+            <th>מזהה</th>
+            <th>תיאור הסיכון</th>
+            <th>קטגוריה</th>
+            <th class="center">סבירות ראשונית</th>
+            <th class="center">חומרה ראשונית</th>
+            <th class="center">ציון ראשוני</th>
+            <th>מיטיגציות</th>
+            <th class="center">סבירות שארית</th>
+            <th class="center">חומרה שארית</th>
+            <th class="center">ציון שארי</th>
+            <th class="center">% הפחתה</th>
+            <th class="center">סטטוס</th>
+            <th class="center">פעולות</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Add risk CTA -->
+    <div class="add-risk-cta" onclick="openRiskModal()">
+      ➕ הוסף סיכון חדש (נשמר בדפדפן שלך בלבד)
+    </div>
+  </section>
+
+  <!-- Risk Edit Modal -->
+  <div class="modal-backdrop" id="riskModal">
+    <div class="modal">
+      <h3 id="modalTitle">הוסף סיכון חדש</h3>
+      <input type="hidden" id="rfId">
+      <div class="modal-field">
+        <label>תיאור הסיכון *</label>
+        <textarea id="rfDesc" placeholder="לדוגמה: פציעת חניך בעת חציית כביש בפעילות אופניים"></textarea>
+      </div>
+      <div class="modal-field">
+        <label>קטגוריה *</label>
+        <select id="rfCat">
+          <option>תפעולי</option>
+          <option>בטיחותי</option>
+          <option>רפואי</option>
+          <option>סביבתי</option>
+          <option>טכני</option>
+          <option>ניהולי</option>
+        </select>
+      </div>
+      <div class="modal-field-row">
+        <div class="modal-field">
+          <label>סבירות ראשונית (1-5) *</label>
+          <select id="rfL1">
+            <option value="1">1 - נדיר</option>
+            <option value="2">2 - לא סביר</option>
+            <option value="3" selected>3 - אפשרי</option>
+            <option value="4">4 - סביר</option>
+            <option value="5">5 - כמעט ודאי</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>חומרה ראשונית (1-5) *</label>
+          <select id="rfI1">
+            <option value="1">1 - זניחה</option>
+            <option value="2">2 - קלה</option>
+            <option value="3" selected>3 - בינונית</option>
+            <option value="4">4 - גבוהה</option>
+            <option value="5">5 - קטסטרופלית</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>מיטיגציות (שורה אחת לכל מיטיגציה) *</label>
+        <textarea id="rfMit" placeholder="תדריך בטיחות לפני הפעילות&#10;הכשרת מתנדבים&#10;תיק עזרה ראשונה זמין"></textarea>
+      </div>
+      <div class="modal-field-row">
+        <div class="modal-field">
+          <label>סבירות שארית (אחרי מיטיגציות) *</label>
+          <select id="rfL2">
+            <option value="1">1 - נדיר</option>
+            <option value="2" selected>2 - לא סביר</option>
+            <option value="3">3 - אפשרי</option>
+            <option value="4">4 - סביר</option>
+            <option value="5">5 - כמעט ודאי</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>חומרה שארית *</label>
+          <select id="rfI2">
+            <option value="1">1 - זניחה</option>
+            <option value="2" selected>2 - קלה</option>
+            <option value="3">3 - בינונית</option>
+            <option value="4">4 - גבוהה</option>
+            <option value="5">5 - קטסטרופלית</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>אחראי</label>
+        <input type="text" id="rfOwner" placeholder="לדוגמה: ממונה בטיחות / רכז פעילות">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="saveRisk()">שמור</button>
+        <button class="btn-secondary" onclick="closeRiskModal()">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export FAB -->
+  <button class="export-btn fab" onclick="openExportMenu()" title="ייצא / שתף">📷</button>
+  <div class="modal-backdrop" id="exportModal">
+    <div class="modal" style="max-width: 480px">
+      <h3>📤 ייצוא ושיתוף</h3>
+      <p style="font-size:13px; color: var(--text-soft); margin-bottom:16px">בחר מה לייצא או לאיזה פורמט לשתף:</p>
+
+      <div class="modal-field">
+        <label>אזור לצילום</label>
+        <select id="captureArea">
+          <option value="full">דשבורד מלא</option>
+          <option value="kpi">KPIs בלבד</option>
+          <option value="charts">גרפים בלבד</option>
+          <option value="risk">ניהול סיכונים בלבד</option>
+          <option value="insights">תובנות בלבד</option>
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0;">
+        <button class="export-btn primary" onclick="shareWhatsApp()">💬 שתף בוואטסאפ</button>
+        <button class="export-btn" onclick="copyImage()">📋 העתק לזיכרון</button>
+        <button class="export-btn" onclick="downloadPNG()">🖼 הורד PNG</button>
+        <button class="export-btn" onclick="downloadPDF()">📄 הדפסה / PDF</button>
+        <button class="export-btn" onclick="exportCSV()">📊 ייצא CSV</button>
+        <button class="export-btn" onclick="exportRisksCSV()">🛡 ייצא סיכונים</button>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 8px">
+        <button class="btn-secondary" onclick="closeExportMenu()">סגור</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast"></div>
 
   <footer class="footer">
     <p><strong>עמותת אתגרים</strong> — לפרוץ גבולות, לדעת שאפשר</p>
@@ -1283,6 +1886,444 @@ function resetFilters() {
 
 // Initial render
 render();
+
+// ===================================================
+// ===== RISK MANAGEMENT (ISO 31000) ================
+// ===================================================
+const DEFAULT_RISKS = [
+  {
+    id: 'R001', cat: 'תפעולי',
+    desc: 'טעות אנוש פרטנית במהלך פעילות (גורם השורש המוביל - 50% מהאירועים)',
+    L1: 5, I1: 4,
+    mits: ['תדריך בטיחות מקדים לכל פעילות', 'הכשרת מתנדבים תקופתית (כל 6 שבועות)', 'הצמדת מתנדב מלווה לחניך', 'תחקיר ולמידה ארגונית אחרי כל אירוע'],
+    L2: 4, I2: 3, owner: 'ממונה בטיחות ארגוני'
+  },
+  {
+    id: 'R002', cat: 'בטיחותי',
+    desc: 'פציעה חמורה בפעילות אופניים (46.5% מהאירועים בעמותה - תחום הסיכון המוביל)',
+    L1: 5, I1: 4,
+    mits: ['קסדה חובה לכל המשתתפים', 'בדיקת ציוד טכני לפני כל יציאה', 'נוהל חסימת כביש מובנה', 'מסלולים מותאמים לרמת הקבוצה', 'נוכחות מדריך מוסמך תמיד'],
+    L2: 4, I2: 2, owner: 'רכז אופניים ארצי'
+  },
+  {
+    id: 'R003', cat: 'רפואי',
+    desc: 'התקף רפואי של חניך עם מצב רפואי מורכב (אפילפסיה, מחלות לב, סוכרת)',
+    L1: 4, I1: 5,
+    mits: ['מיפוי חניכים בסיכון - תיק רפואי מעודכן', 'הצמדת 2 מתנדבים מנוסים לחניך בסיכון גבוה', 'תיק עזרה ראשונה זמין בכל פעילות', 'הכשרת מדריכים לזיהוי וטיפול ראשוני', 'נוהל קשר עם משפחה'],
+    L2: 3, I2: 4, owner: 'אחות / ממונה בטיחות'
+  },
+  {
+    id: 'R004', cat: 'בטיחותי',
+    desc: 'טביעה / פציעה בפעילות מים (שיט, סאפ, שחייה במים פתוחים)',
+    L1: 3, I1: 5,
+    mits: ['חגורות הצלה חובה', 'בדיקת ידיעת שחייה לפני פעילות', 'מציל מקצועי בכל פעילות מים', 'בדיקת תנאי ים לפני יציאה', 'נוהל פינוי ומס' מציל'],
+    L2: 2, I2: 4, owner: 'רכז שיט'
+  },
+  {
+    id: 'R005', cat: 'בטיחותי',
+    desc: 'נפילה מגובה בפעילות חבל / מצוק',
+    L1: 3, I1: 5,
+    mits: ['בדיקת ציוד בטיחות לפני כל שימוש', 'מדריך מוסמך EFRAT/AMI', 'בדיקת קשרים פעמיים', 'תרגול נפילה לפני התחלה'],
+    L2: 2, I2: 4, owner: 'רכז מצוק'
+  },
+  {
+    id: 'R006', cat: 'ניהולי',
+    desc: 'כשל בניהול ישיר (רכז/מוביל פעילות/מתנדב מלווה - 16.7% מהאירועים)',
+    L1: 4, I1: 4,
+    mits: ['הכשרת רכזים מובנית', 'הגדרת תפקידים ואחריות ברורים', 'פגישות חניכה חודשיות', 'ביקורת תקופתית של ממונה בטיחות'],
+    L2: 3, I2: 3, owner: 'מנכ"ל / סמנכ"ל'
+  },
+  {
+    id: 'R007', cat: 'טכני',
+    desc: 'כשל בציוד טכני (אופניים, חבלים, ציוד מים)',
+    L1: 2, I1: 4,
+    mits: ['בדיקת ציוד יומית', 'נוהל תחזוקה תקופתית מתועד', 'החלפת ציוד בלוי לפי לוח זמנים'],
+    L2: 1, I2: 3, owner: 'אחראי ציוד'
+  },
+  {
+    id: 'R008', cat: 'סביבתי',
+    desc: 'תנאי סביבה מסוכנים (מזג אוויר, שטח, חיות)',
+    L1: 3, I1: 3,
+    mits: ['בדיקת תחזית לפני פעילות', 'נוהל ביטול פעילות בתנאי קיצון', 'תדריך התנהגות בשטח'],
+    L2: 2, I2: 2, owner: 'מוביל פעילות'
+  },
+  {
+    id: 'R009', cat: 'ניהולי',
+    desc: 'הכשרה מקדימה לא מספקת של מדריכים ומתנדבים',
+    L1: 3, I1: 4,
+    mits: ['קורס הכשרה למתנדבים חדשים', 'הסמכה תקופתית מחודשת', 'מנטור צמוד למתנדב חדש'],
+    L2: 2, I2: 3, owner: 'מנהל הכשרה'
+  },
+  {
+    id: 'R010', cat: 'תפעולי',
+    desc: 'דיווחים פתוחים שלא נסגרו בזמן (24% מהדיווחים) - חוסר למידה ארגונית',
+    L1: 4, I1: 2,
+    mits: ['SLA לסגירת דיווח (30 יום)', 'מעקב חודשי של ממונה בטיחות', 'ועדת תחקיר ארגונית'],
+    L2: 2, I2: 2, owner: 'ממונה בטיחות'
+  },
+];
+
+const STORAGE_KEY = 'etgarim_user_risks';
+function getUserRisks() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveUserRisks(arr) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+function allRisks() {
+  return [...DEFAULT_RISKS, ...getUserRisks()];
+}
+
+function scoreColor(s) {
+  if (s <= 4) return 'score-low';
+  if (s <= 9) return 'score-mod';
+  if (s <= 15) return 'score-high';
+  return 'score-ext';
+}
+function heatRow(s) {
+  if (s <= 4) return 'hm-r1';
+  if (s <= 9) return 'hm-r2';
+  if (s <= 12) return 'hm-r3';
+  if (s <= 16) return 'hm-r4';
+  return 'hm-r5';
+}
+
+function renderHeatmap() {
+  const hm = document.getElementById('heatmap');
+  hm.innerHTML = '';
+  // Top-left corner (empty)
+  const corner = document.createElement('div');
+  hm.appendChild(corner);
+  // Header: X axis (Impact 1-5)
+  for (let i = 1; i <= 5; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'hm-axis';
+    cell.textContent = i;
+    hm.appendChild(cell);
+  }
+  // 5 rows (Likelihood 5 to 1, top to bottom)
+  const risks = allRisks();
+  for (let L = 5; L >= 1; L--) {
+    // Y axis cell
+    const yCell = document.createElement('div');
+    yCell.className = 'hm-axis';
+    yCell.textContent = L;
+    hm.appendChild(yCell);
+    // 5 cells
+    for (let I = 1; I <= 5; I++) {
+      const score = L * I;
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell ' + heatRow(score);
+      cell.title = `סבירות ${L} × חומרה ${I} = ${score}`;
+      // Place risk dots
+      risks.forEach(r => {
+        if (r.L1 === L && r.I1 === I) {
+          const dot = document.createElement('div');
+          dot.className = 'risk-dot';
+          dot.textContent = r.id.slice(1);
+          dot.title = `${r.id} (ראשוני): ${r.desc}`;
+          cell.appendChild(dot);
+        }
+        if (r.L2 === L && r.I2 === I) {
+          const dot = document.createElement('div');
+          dot.className = 'risk-dot residual';
+          dot.textContent = r.id.slice(1);
+          dot.title = `${r.id} (שארי): ${r.desc}`;
+          cell.appendChild(dot);
+        }
+      });
+      hm.appendChild(cell);
+    }
+  }
+  // Bottom row: empty + X label
+  const bl = document.createElement('div');
+  hm.appendChild(bl);
+  for (let i = 0; i < 5; i++) hm.appendChild(document.createElement('div'));
+  // Better: add X axis label below
+  const xLabel = document.createElement('div');
+  xLabel.style.gridColumn = '2 / 7';
+  xLabel.style.textAlign = 'center';
+  xLabel.style.fontWeight = '700';
+  xLabel.style.fontSize = '12px';
+  xLabel.style.color = 'var(--text-soft)';
+  xLabel.style.letterSpacing = '1px';
+  xLabel.textContent = '◀ חומרה';
+  hm.appendChild(xLabel);
+}
+
+function renderRiskTable() {
+  const tbody = document.querySelector('#riskTable tbody');
+  const risks = allRisks();
+  const userRiskIds = new Set(getUserRisks().map(r => r.id));
+
+  tbody.innerHTML = risks.map(r => {
+    const s1 = r.L1 * r.I1;
+    const s2 = r.L2 * r.I2;
+    const reduction = s1 > 0 ? Math.round((s1 - s2) / s1 * 100) : 0;
+    let reductionCls = 'reduction-good';
+    let alertCls = 'ok';
+    let alertText = '✓ מטופל';
+    if (reduction < 30) {
+      reductionCls = 'reduction-bad';
+      alertCls = 'alert';
+      alertText = '⚠ דורש פעולה';
+    } else if (reduction < 50) {
+      reductionCls = 'reduction-mod';
+      alertCls = 'warn';
+      alertText = '◐ סביר';
+    }
+    const isUser = userRiskIds.has(r.id);
+    return `
+      <tr>
+        <td class="risk-id">${r.id}</td>
+        <td>${r.desc}</td>
+        <td>${r.cat}</td>
+        <td class="center">${r.L1}</td>
+        <td class="center">${r.I1}</td>
+        <td class="center"><span class="score-badge ${scoreColor(s1)}">${s1}</span></td>
+        <td>
+          <ul class="mitigations-list">
+            ${r.mits.map(m => `<li>${m}</li>`).join('')}
+          </ul>
+          ${r.owner ? `<div style="margin-top:6px; font-size:11px; color:var(--text-muted)">אחראי: <strong>${r.owner}</strong></div>` : ''}
+        </td>
+        <td class="center">${r.L2}</td>
+        <td class="center">${r.I2}</td>
+        <td class="center"><span class="score-badge ${scoreColor(s2)}">${s2}</span></td>
+        <td class="center"><span class="reduction-pct ${reductionCls}">${reduction}%</span></td>
+        <td class="center"><span class="alert-light ${alertCls}"><span class="light"></span>${alertText}</span></td>
+        <td class="center">
+          ${isUser ? `<button class="btn-icon" onclick="editRisk('${r.id}')" title="עריכה">✏</button>
+                     <button class="btn-icon danger" onclick="deleteRisk('${r.id}')" title="מחק">🗑</button>`
+                   : '<span style="font-size:10px; color:var(--text-muted)">סטנדרטי</span>'}
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function renderRisks() {
+  renderHeatmap();
+  renderRiskTable();
+}
+renderRisks();
+
+// ===== Risk Modal =====
+let editingId = null;
+function openRiskModal(id = null) {
+  editingId = id;
+  const m = document.getElementById('riskModal');
+  document.getElementById('modalTitle').textContent = id ? 'ערוך סיכון' : 'הוסף סיכון חדש';
+
+  if (id) {
+    const r = getUserRisks().find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('rfId').value = r.id;
+    document.getElementById('rfDesc').value = r.desc;
+    document.getElementById('rfCat').value = r.cat;
+    document.getElementById('rfL1').value = r.L1;
+    document.getElementById('rfI1').value = r.I1;
+    document.getElementById('rfMit').value = r.mits.join('\n');
+    document.getElementById('rfL2').value = r.L2;
+    document.getElementById('rfI2').value = r.I2;
+    document.getElementById('rfOwner').value = r.owner || '';
+  } else {
+    document.getElementById('rfId').value = '';
+    document.getElementById('rfDesc').value = '';
+    document.getElementById('rfCat').selectedIndex = 0;
+    document.getElementById('rfL1').value = '3';
+    document.getElementById('rfI1').value = '3';
+    document.getElementById('rfMit').value = '';
+    document.getElementById('rfL2').value = '2';
+    document.getElementById('rfI2').value = '2';
+    document.getElementById('rfOwner').value = '';
+  }
+  m.classList.add('open');
+}
+function closeRiskModal() {
+  document.getElementById('riskModal').classList.remove('open');
+  editingId = null;
+}
+function editRisk(id) { openRiskModal(id); }
+function deleteRisk(id) {
+  if (!confirm('האם למחוק את הסיכון? פעולה זו אינה ניתנת לביטול')) return;
+  saveUserRisks(getUserRisks().filter(r => r.id !== id));
+  renderRisks();
+  toast('הסיכון נמחק', 'success');
+}
+function saveRisk() {
+  const desc = document.getElementById('rfDesc').value.trim();
+  const mitText = document.getElementById('rfMit').value.trim();
+  if (!desc || !mitText) {
+    toast('נא למלא תיאור ומיטיגציות', 'error');
+    return;
+  }
+  const risk = {
+    id: editingId || ('U' + (getUserRisks().length + 1).toString().padStart(3, '0')),
+    cat: document.getElementById('rfCat').value,
+    desc: desc,
+    L1: Number(document.getElementById('rfL1').value),
+    I1: Number(document.getElementById('rfI1').value),
+    mits: mitText.split('\n').map(s => s.trim()).filter(Boolean),
+    L2: Number(document.getElementById('rfL2').value),
+    I2: Number(document.getElementById('rfI2').value),
+    owner: document.getElementById('rfOwner').value.trim()
+  };
+  const risks = getUserRisks();
+  if (editingId) {
+    const idx = risks.findIndex(r => r.id === editingId);
+    if (idx >= 0) risks[idx] = risk; else risks.push(risk);
+  } else {
+    risks.push(risk);
+  }
+  saveUserRisks(risks);
+  closeRiskModal();
+  renderRisks();
+  toast(editingId ? 'הסיכון עודכן' : 'הסיכון נוסף', 'success');
+}
+
+// ===================================================
+// ===== EXPORT & SHARE =============================
+// ===================================================
+function openExportMenu() { document.getElementById('exportModal').classList.add('open'); }
+function closeExportMenu() { document.getElementById('exportModal').classList.remove('open'); }
+
+function getCaptureTarget() {
+  const area = document.getElementById('captureArea').value;
+  if (area === 'kpi') return document.querySelector('.kpi-grid');
+  if (area === 'charts') return document.querySelector('.row-2');
+  if (area === 'risk') return document.getElementById('riskSection');
+  if (area === 'insights') return document.querySelector('.insights');
+  return document.querySelector('main.container');
+}
+
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function captureImage() {
+  toast('יוצר צילום...', '');
+  const target = getCaptureTarget();
+  // Close modal before capturing
+  closeExportMenu();
+  await new Promise(r => setTimeout(r, 100));
+  const canvas = await html2canvas(target, {
+    backgroundColor: '#FAF7F2',
+    scale: 2,
+    useCORS: true,
+    logging: false,
+  });
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+async function downloadPNG() {
+  try {
+    const blob = await captureImage();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `דשבורד_בטיחות_${new Date().toISOString().slice(0,10)}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('הצילום הורד', 'success');
+  } catch (e) {
+    toast('שגיאה בצילום', 'error');
+    console.error(e);
+  }
+}
+
+async function copyImage() {
+  try {
+    const blob = await captureImage();
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      toast('הועתק לזיכרון! אפשר להדביק בכל מקום (Ctrl+V)', 'success');
+    } else {
+      // Fallback - download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'screenshot.png'; a.click();
+      URL.revokeObjectURL(url);
+      toast('הדפדפן לא תומך בהעתקה - הקובץ הורד', 'success');
+    }
+  } catch (e) {
+    toast('שגיאה בהעתקה', 'error');
+  }
+}
+
+async function shareWhatsApp() {
+  try {
+    const blob = await captureImage();
+    const file = new File([blob], 'dashboard.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: 'דשבורד בטיחות אתגרים',
+        text: 'דשבורד בטיחות עמותת אתגרים - https://lahavroee.github.io/etgarim-safety-dashboard/'
+      });
+      toast('נשלח לשיתוף', 'success');
+    } else {
+      // Desktop: copy image + open WhatsApp Web
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        toast('התמונה הועתקה - פותח וואטסאפ, הדבק עם Ctrl+V', 'success');
+      }
+      window.open('https://web.whatsapp.com', '_blank');
+    }
+  } catch (e) {
+    toast('שגיאה בשיתוף', 'error');
+  }
+}
+
+function downloadPDF() {
+  closeExportMenu();
+  window.print();
+}
+
+function exportCSV() {
+  const rows = applyFilters();
+  const headers = ['תאריך', 'שנה', 'חומרה', 'נושא פעילות', 'גורם מממן', 'מדריך', 'רכז', 'נפצע', 'גורם שורש', 'סגור'];
+  const csv = [headers.join(',')];
+  for (const r of rows) {
+    csv.push([r.d, r.y, r.sev, r.act, r.fund, r.inst, r.coord, r.inj, r.root, r.closed]
+      .map(v => v == null ? '' : ('"' + String(v).replace(/"/g, '""') + '"')).join(','));
+  }
+  const blob = new Blob(['\uFEFF' + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `אירועי_בטיחות_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast('הקובץ הורד', 'success');
+}
+
+function exportRisksCSV() {
+  const risks = allRisks();
+  const headers = ['מזהה', 'קטגוריה', 'תיאור', 'סבירות ראשונית', 'חומרה ראשונית', 'ציון ראשוני', 'מיטיגציות', 'סבירות שארית', 'חומרה שארית', 'ציון שארי', '% הפחתה', 'אחראי'];
+  const csv = [headers.join(',')];
+  for (const r of risks) {
+    const s1 = r.L1 * r.I1;
+    const s2 = r.L2 * r.I2;
+    const red = s1 > 0 ? Math.round((s1 - s2) / s1 * 100) : 0;
+    csv.push([r.id, r.cat, r.desc, r.L1, r.I1, s1, r.mits.join(' | '), r.L2, r.I2, s2, red + '%', r.owner || '']
+      .map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','));
+  }
+  const blob = new Blob(['\uFEFF' + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `פנקס_סיכונים_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast('הקובץ הורד', 'success');
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-backdrop').forEach(b => {
+  b.addEventListener('click', e => {
+    if (e.target === b) b.classList.remove('open');
+  });
+});
 </script>
 
 </body>
